@@ -1,52 +1,61 @@
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
+import org.quartz.JobDetail;
+import org.quartz.Scheduler;
+import org.quartz.SchedulerException;
+import org.quartz.Trigger;
+import org.quartz.impl.StdSchedulerFactory;
+
+import static org.quartz.JobBuilder.*;
+import static org.quartz.TriggerBuilder.*;
+import static org.quartz.SimpleScheduleBuilder.*;
 
 /**
  * @author Crunchify.com
  */
 
 public class Main {
-    private static int extractPID(String psOutput) {
-        for (String current : psOutput.split(" ")) {
-            try {
-                return Integer.parseInt(current);
-            } catch (NumberFormatException ignore) {
-
-            }
-        }
-        throw new RuntimeException("Can't fine pid.");
-    }
-
-    private static void killPanGpHip() {
+    private static void sleepForever(Scheduler scheduler) throws SchedulerException {
         try {
-            String process;
-            int pid;
-            Process p = Runtime.getRuntime().exec("ps -ax");
-            BufferedReader input = new BufferedReader(new InputStreamReader(p.getInputStream()));
-            while ((process = input.readLine()) != null) {
-                if (process.contains("PanGpHip") && ! process.contains("PanGpHipMp")) {
-                    pid = extractPID(process);
-                    System.out.println(process); // <-- Print all Process here line
-                    Process killCommand = Runtime.getRuntime().exec("sudo -S kill -9 " + pid);
-                    Writer toSudo = new OutputStreamWriter(killCommand.getOutputStream());
-                    String password = "";
-
-                    toSudo.write(password);
-                    toSudo.write('\n');  // sudo's docs demand a newline after the password
-                    toSudo.flush();
-                    toSudo.close();      // but closing the stream might be sufficient
-                }
-            }
-            input.close();
-        } catch (Exception err) {
-            err.printStackTrace();
+            while (!scheduler.isInStandbyMode())
+                Thread.sleep(60000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
     }
 
     public static void main(String[] args) {
-        killPanGpHip();
+        Scheduler scheduler = null;
+
+        try {
+            // Grab the Scheduler instance from the Factory
+            scheduler = StdSchedulerFactory.getDefaultScheduler();
+
+            // and start it off
+            scheduler.start();
+
+            // define the job and tie it to our HelloJob class
+            JobDetail job = newJob(KillPanGpHip.class)
+                    .withIdentity("job1", "group1")
+                    .build();
+
+            // Trigger the job to run now, and then repeat every 40 seconds
+            Trigger trigger = newTrigger()
+                    .withIdentity("trigger1", "group1")
+                    .startNow()
+                    .withSchedule(simpleSchedule()
+                            .withIntervalInSeconds(20)
+                            .repeatForever())
+                    .build();
+
+            // Tell quartz to schedule the job using our trigger
+            scheduler.scheduleJob(job, trigger);
+
+            sleepForever(scheduler);
+
+            scheduler.shutdown();
+
+        } catch (SchedulerException se) {
+            se.printStackTrace();
+        }
     }
 }
 
