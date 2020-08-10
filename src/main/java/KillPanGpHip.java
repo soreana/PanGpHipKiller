@@ -27,7 +27,7 @@ public class KillPanGpHip implements Job {
             Process p = Runtime.getRuntime().exec("ps -ax");
             BufferedReader input = new BufferedReader(new InputStreamReader(p.getInputStream()));
             while ((process = input.readLine()) != null) {
-                if (process.contains("PanGpHip") && ! process.contains("PanGpHipMp")) {
+                if (process.contains("PanGpHip") && ! process.contains("PanGpHipMp") && ! process.contains("PanGpHipKiller")) {
                     pid = extractPID(process);
                     System.out.println(process); // <-- Print all Process here line
                     Process killCommand = Runtime.getRuntime().exec("sudo -S kill -9 " + pid);
